@@ -2,33 +2,29 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { swaggerUi, specs } = require('./swagger');
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// CORS middleware
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
 });
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "License Validator API"
+}));
+
 function loadLicenses() {
     if (process.env.LICENSES_JSON) {
-        try {
-            return JSON.parse(process.env.LICENSES_JSON);
-        } catch {
-            return {};
-        }
+        try { return JSON.parse(process.env.LICENSES_JSON); } catch { return {}; }
     }
-
     const localPath = path.join(__dirname, 'licenses.local.json');
     if (fs.existsSync(localPath)) {
-        try {
-            return JSON.parse(fs.readFileSync(localPath, 'utf8'));
-        } catch {
-            return {};
-        }
+        try { return JSON.parse(fs.readFileSync(localPath, 'utf8')); } catch { return {}; }
     }
     return {};
 }
@@ -36,42 +32,52 @@ function loadLicenses() {
 const loadManifest = () => ({
     name: "Componente Web",
     version: "1.0.0",
-    description: "Componente validado por licença",
     build: new Date().toISOString()
 });
 
+/**
+ * @swagger
+ * /validate-license:
+ *   get:
+ *     summary: Valida uma licença de componente
+ *     parameters:
+ *       - in: query
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Origin
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Licença válida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LicenseValidationResponse'
+ *       400:
+ *         description: Chave não fornecida
+ *       403:
+ *         description: Licença inválida, expirada ou origin não autorizado
+ */
 app.get('/validate-license', (req, res) => {
     const { key } = req.query;
     const origin = req.get('Origin') || req.get('Referer') || 'unknown';
 
-    if (!key) {
-        return res.status(400).json({
-            error: 'Chave de licença não fornecida'
-        });
-    }
+    if (!key) return res.status(400).json({ error: 'Chave de licença não fornecida' });
 
     const licenses = loadLicenses();
     const license = licenses[key];
 
-    if (!license) {
-        return res.status(403).json({
-            error: 'Licença inválida'
-        });
-    }
-
-    if (new Date() > new Date(license.expiresAt)) {
-        return res.status(403).json({
-            error: 'Licença expirada'
-        });
-    }
+    if (!license) return res.status(403).json({ error: 'Licença inválida' });
+    if (new Date() > new Date(license.expiresAt)) return res.status(403).json({ error: 'Licença expirada' });
 
     if (license.origin !== '*') {
         const normalize = (url) => url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        
         if (normalize(origin) !== normalize(license.origin)) {
-            return res.status(403).json({
-                error: 'Origin não autorizado'
-            });
+            return res.status(403).json({ error: 'Origin não autorizado' });
         }
     }
 
@@ -84,6 +90,19 @@ app.get('/validate-license', (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Status do servidor
+ *     responses:
+ *       200:
+ *         description: Status do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthResponse'
+ */
 app.get('/health', (req, res) => {
     const licenses = loadLicenses();
     res.json({
@@ -94,6 +113,17 @@ app.get('/health', (req, res) => {
     });
 });
 
+/**
+ * @swagger
+ * /licenses:
+ *   get:
+ *     summary: Lista licenças (dev only)
+ *     responses:
+ *       200:
+ *         description: Lista de licenças
+ *       404:
+ *         description: Não disponível em produção
+ */
 app.get('/licenses', (req, res) => {
     if (process.env.NODE_ENV === 'production') {
         return res.status(404).json({ error: 'Endpoint não disponível em produção' });
@@ -112,25 +142,16 @@ app.get('/licenses', (req, res) => {
     res.json(safeLicenses);
 });
 
-app.use((req, res) => {
-    res.status(404).json({
-        error: 'Endpoint não encontrado'
-    });
-});
+app.get('/', (req, res) => res.redirect('/api-docs'));
+app.use((req, res) => res.status(404).json({ error: 'Endpoint não encontrado' }));
 
-// Para desenvolvimento local
 if (require.main === module) {
     const server = app.listen(port, () => {
         const licenseCount = Object.keys(loadLicenses()).length;
-        console.log(`🚀 Servidor rodando na porta ${port}`);
-        console.log(`📝 ${licenseCount} licença(s) carregada(s)`);
-        console.log(`🌐 Health: http://localhost:${port}/health`);
+        console.log(`🚀 Servidor na porta ${port} | ${licenseCount} licença(s)`);
+        console.log(`📚 Docs: http://localhost:${port}/api-docs`);
     });
-    
-    server.on('error', (err) => {
-        console.error('❌ Erro ao iniciar servidor:', err.message);
-    });
+    server.on('error', (err) => console.error('❌ Erro:', err.message));
 }
 
-// Export para Vercel
 module.exports = app;
