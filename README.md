@@ -63,10 +63,24 @@ LICENSES_JSON={"chave": {"expiresAt": "2025-12-31", "component": "botao", "origi
 2. Configure `LICENSES_JSON` nas Environment Variables
 3. Deploy automático
 
+**Testando após deploy:**
+```bash
+# Verifique se está funcionando
+curl https://validador-web.vercel.app/health
+curl https://validador-web.vercel.app/debug
+
+# Teste o Swagger
+# Acesse: https://validador-web.vercel.app/api-docs
+```
+
+**Troubleshooting Swagger:**
+- Se o Swagger não carregar, verifique: `https://validador-web.vercel.app/swagger.json`
+- URL do servidor é detectada automaticamente via `VERCEL_URL`
+
 ## 📚 Documentação
 
 - **Local**: http://localhost:3001/api-docs
-- **Produção**: https://seu-app.vercel.app/api-docs
+- **Produção**: https://validador-web.vercel.app/api-docs
 
 ## 📁 Estrutura
 ```

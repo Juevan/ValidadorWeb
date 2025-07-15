@@ -1,6 +1,17 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
+const getServerUrl = () => {
+  // Para Vercel, detecta a URL automaticamente
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://validador-web.vercel.app';
+  }
+  return `http://localhost:${process.env.PORT || 3001}`;
+};
+
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -9,11 +20,12 @@ const options = {
       version: '1.0.0',
       description: 'API para validação de licenças de componentes web'
     },
-    servers: [{
-      url: process.env.NODE_ENV === 'production' 
-        ? 'https://your-vercel-app.vercel.app' 
-        : `http://localhost:${process.env.PORT || 3001}`
-    }],
+    servers: [
+      { 
+        url: getServerUrl(),
+        description: process.env.NODE_ENV === 'production' ? 'Production' : 'Development'
+      }
+    ],
     components: {
       schemas: {
         LicenseValidationResponse: {

@@ -15,8 +15,17 @@ app.use((req, res, next) => {
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "License Validator API"
+    customSiteTitle: "License Validator API",
+    swaggerOptions: {
+        url: '/swagger.json'
+    }
 }));
+
+// Endpoint para servir o JSON do Swagger
+app.get('/swagger.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(specs);
+});
 
 function loadLicenses() {
     if (process.env.LICENSES_JSON) {
@@ -143,6 +152,17 @@ app.get('/licenses', (req, res) => {
 });
 
 app.get('/', (req, res) => res.redirect('/api-docs'));
+
+// Debug route para verificar se está funcionando
+app.get('/debug', (req, res) => {
+    res.json({
+        message: 'API funcionando',
+        environment: process.env.NODE_ENV || 'development',
+        vercelUrl: process.env.VERCEL_URL || 'não definido',
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.use((req, res) => res.status(404).json({ error: 'Endpoint não encontrado' }));
 
 if (require.main === module) {
