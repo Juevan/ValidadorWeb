@@ -16,6 +16,13 @@ app.use((req, res, next) => {
     next();
 });
 
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.sendStatus(200);
+});
+
 
 function getSwaggerJsonUrl(req) {
     if (process.env.VERCEL_URL) {
