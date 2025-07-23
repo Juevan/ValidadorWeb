@@ -2,7 +2,6 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
 const getServerUrl = () => {
-  // Para Vercel, detecta a URL automaticamente
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
